@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IAS Gianigelpi API</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: Arial, sans-serif;
+        background: #f8fafc;
+        color: #1e293b;
+      }
+
+      header {
+        background: #1e293b;
+        padding: 20px 40px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      header h1 {
+        color: white;
+        font-size: 20px;
+      }
+      .status-badge {
+        background: #16a34a;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: bold;
+      }
+
+      .container {
+        max-width: 900px;
+        margin: 40px auto;
+        padding: 0 20px;
+      }
+
+      .card {
+        background: white;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        padding: 24px;
+        margin-bottom: 24px;
+      }
+      .card h2 {
+        font-size: 16px;
+        color: #1e293b;
+        margin-bottom: 16px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #e2e8f0;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      thead th {
+        background: #f1f5f9;
+        padding: 10px 14px;
+        text-align: left;
+        font-size: 12px;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      tbody tr {
+        border-bottom: 1px solid #f1f5f9;
+      }
+      tbody tr:hover {
+        background: #f8fafc;
+      }
+      tbody td {
+        padding: 12px 14px;
+        font-size: 14px;
+      }
+      .precio {
+        font-weight: 600;
+        color: #2563eb;
+      }
+
+      .btn-delete {
+        background: none;
+        border: 1px solid #fca5a5;
+        color: #dc2626;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .btn-delete:hover {
+        background: #fee2e2;
+      }
+
+      .form-row {
+        display: flex;
+        gap: 12px;
+        align-items: flex-end;
+        flex-wrap: wrap;
+      }
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        flex: 1;
+        min-width: 150px;
+      }
+      .form-group label {
+        font-size: 12px;
+        color: #64748b;
+        font-weight: 500;
+      }
+      .form-group input {
+        padding: 8px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-size: 14px;
+        outline: none;
+        transition: border 0.15s;
+      }
+      .form-group input:focus {
+        border-color: #2563eb;
+      }
+
+      .btn-add {
+        background: #2563eb;
+        color: white;
+        border: none;
+        padding: 9px 20px;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background 0.15s;
+        white-space: nowrap;
+      }
+      .btn-add:hover {
+        background: #1d4ed8;
+      }
+
+      .msg {
+        font-size: 13px;
+        margin-top: 10px;
+        padding: 8px 12px;
+        border-radius: 6px;
+        display: none;
+      }
+      .msg.ok {
+        background: #dcfce7;
+        color: #15803d;
+        display: block;
+      }
+      .msg.err {
+        background: #fee2e2;
+        color: #dc2626;
+        display: block;
+      }
+
+      .empty {
+        text-align: center;
+        padding: 30px;
+        color: #94a3b8;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>IAS Gianigelpi API — Productos</h1>
+      <span class="status-badge" id="status-badge">Cargando...</span>
+    </header>
+
+    <div class="container">
+      <div class="card">
+        <h2>Agregar producto</h2>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nombre</label>
+            <input type="text" id="input-nombre" placeholder="Ej: Teclado" />
+          </div>
+          <div class="form-group">
+            <label>Precio</label>
+            <input type="number" id="input-precio" placeholder="Ej: 150" />
+          </div>
+          <button class="btn-add" onclick="agregarProducto()">Agregar</button>
+        </div>
+        <div class="msg" id="msg"></div>
+      </div>
+
+      <div class="card">
+        <h2>Lista de productos</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Precio</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-productos">
+            <tr>
+              <td colspan="4" class="empty">Cargando productos...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+      async function checkHealth() {
+        try {
+          const res = await fetch("/health");
+          const data = await res.json();
+          const badge = document.getElementById("status-badge");
+          if (data.status === "ok") {
+            badge.textContent = "✓ API Online";
+            badge.style.background = "#16a34a";
+          } else {
+            badge.textContent = "✗ API Error";
+            badge.style.background = "#dc2626";
+          }
+        } catch {
+          document.getElementById("status-badge").textContent =
+            "✗ Sin conexión";
+          document.getElementById("status-badge").style.background = "#dc2626";
+        }
+      }
+
+      async function cargarProductos() {
+        try {
+          const res = await fetch("/productos");
+          const productos = await res.json();
+          const tbody = document.getElementById("tabla-productos");
+          if (productos.length === 0) {
+            tbody.innerHTML =
+              '<tr><td colspan="4" class="empty">No hay productos</td></tr>';
+            return;
+          }
+          tbody.innerHTML = productos
+            .map(
+              (p) => `
+        <tr>
+          <td>${p.id}</td>
+          <td>${p.nombre}</td>
+          <td class="precio">$${p.precio}</td>
+          <td><button class="btn-delete" onclick="eliminarProducto(${p.id})">Eliminar</button></td>
+        </tr>
+      `,
+            )
+            .join("");
+        } catch {
+          document.getElementById("tabla-productos").innerHTML =
+            '<tr><td colspan="4" class="empty">Error al cargar productos</td></tr>';
+        }
+      }
+
+      async function agregarProducto() {
+        const nombre = document.getElementById("input-nombre").value.trim();
+        const precio = document.getElementById("input-precio").value.trim();
+        const msg = document.getElementById("msg");
+        msg.className = "msg";
+
+        if (!nombre || !precio) {
+          msg.textContent = "Completá nombre y precio.";
+          msg.className = "msg err";
+          return;
+        }
+
+        try {
+          const res = await fetch("/productos", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nombre, precio: Number(precio) }),
+          });
+          if (res.ok) {
+            msg.textContent = "Producto agregado correctamente.";
+            msg.className = "msg ok";
+            document.getElementById("input-nombre").value = "";
+            document.getElementById("input-precio").value = "";
+            cargarProductos();
+          } else {
+            msg.textContent = "Error al agregar el producto.";
+            msg.className = "msg err";
+          }
+        } catch {
+          msg.textContent = "Error de conexión.";
+          msg.className = "msg err";
+        }
+      }
+
+      async function eliminarProducto(id) {
+        try {
+          const res = await fetch(`/productos/${id}`, { method: "DELETE" });
+          if (res.ok) {
+            cargarProductos();
+          }
+        } catch {
+          alert("Error al eliminar.");
+        }
+      }
+
+      checkHealth();
+      cargarProductos();
+    </script>
+  </body>
+</html>
